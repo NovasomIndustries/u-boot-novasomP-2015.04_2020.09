@@ -154,20 +154,21 @@
 #define CONFIG_EXTRA_ENV_SETTINGS \
         "setenv splashimage_mmc_dev 0\0"                              \
         "setenv splashimage_mmc_part 1\0"                              \
-        "bootenv=NOVAsomParams\0" \
         "splashimage=0x10800000\0"                              \
         "setenv splashpos m,m\0"                                        \
         "splashimage_file_name=splash.bmp.gz\0"   \
+	"splashpos=m,m\0" \
 	"script=boot.scr\0" \
+        "bootenv=NOVAsomParams\0" \
 	"image=zImage\0" \
 	"initrd=uInitrd\0" \
 	"fdt_file=" CONFIG_DEFAULT_FDT_FILE "\0" \
 	"console=ttymxc2\0" \
-	"splashpos=m,m\0" \
 	"fdt_high=0xffffffff\0" \
 	"initrd_high=0xffffffff\0" \
+	"kernel_addr=0x10800000\0" \
+        "fsaddr=0x14800000\0" \
 	"fdt_addr=0x18000000\0" \
-        "fsaddr=0x12800000\0" \
 	"boot_fdt=try\0" \
 	"ip_dyn=yes\0" \
 	"ethaddr=5c:b8:b2:91:9f:29\0" \
@@ -178,14 +179,14 @@
 	"mmcroot=/dev/mmcblk2p2 rootwait rw\0" \
 	"ramroot=/dev/ram rootwait rw\0" \
 	"bootscript=echo Running bootscript from mmc ...; source\0" \
-	"mmcloadbootscript=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${script};\0" \
-	"mmcloadimage=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${image}\0" \
+	"mmcloadbootscript=fatload mmc ${mmcdev}:${mmcpart} ${kernel_addr} ${script};\0" \
+	"mmcloadimage=fatload mmc ${mmcdev}:${mmcpart} ${kernel_addr} ${image}\0" \
 	"mmcloadinitrd=fatload mmc ${mmcdev}:${mmcpart} ${fsaddr} ${initrd}\0" \
 	"mmcloadfdt=fatload mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}\0" \
-        "mmcloadbootenv=fatload mmc ${mmcdev}:${mmcpart}  ${loadaddr} ${bootenv}\0" \
-        "importbootenv=echo Importing environment ...; env import -t ${loadaddr} ${filesize}\0" \
-	"usbloadbootscript=fatload usb ${usbdev}:${usbpart} ${loadaddr} ${script};\0" \
-	"usbloadimage=fatload usb ${usbdev}:${usbpart} ${loadaddr} ${image}\0" \
+        "mmcloadbootenv=fatload mmc ${mmcdev}:${mmcpart}  ${kernel_addr} ${bootenv}\0" \
+        "importbootenv=echo Importing environment ...; env import -t ${kernel_addr} ${filesize}\0" \
+	"usbloadbootscript=fatload usb ${usbdev}:${usbpart} ${kernel_addr} ${script};\0" \
+	"usbloadimage=fatload usb ${usbdev}:${usbpart} ${kernel_addr} ${image}\0" \
 	"usbloadinitrd=fatload usb ${usbdev}:${usbpart} ${fsaddr} ${initrd}\0" \
 	"usbloadfdt=fatload usb ${usbdev}:${usbpart} ${fdt_addr} ${fdtfile}\0" \
 	"videomode=video=mxcfb0:dev=hdmi,1280x720M@60,if=RGB24 fbmem=28M\0" \
@@ -193,16 +194,21 @@
 	"boardargs=setenv bootargs console=${console},${baudrate} root=${ramroot} ${videomode} ramdisk_size=${ramdisk_size};\0" \
 	"board_boot=echo Booting ...; " \
 		"run boardargs; " \
-		"bootz ${loadaddr} ${fsaddr} ${fdt_addr};\0" \
+		"bootz ${kernel_addr} ${fsaddr} ${fdt_addr};\0" \
 
 #define CONFIG_BOOTCOMMAND \
 	   "mmc dev ${mmcdev}; "\
 		"if mmc rescan; then " \
+			"if run mmcloadbootscript; then " \
+				"echo Loaded boot script ${bootenv};" \
+				"source ${kernel_addr};" \
+			"fi;" \
 			"if run mmcloadbootenv; then " \
 				"echo Loaded environment ${bootenv};" \
 				"run importbootenv;" \
 				"run uenvcmd;" \
 			"fi;" \
+			"echo No script or env files found, starting dafault commands;" \
 			"if run mmcloadimage; then " \
 				"if run mmcloadfdt; then " \
 					"if run mmcloadinitrd; then " \
